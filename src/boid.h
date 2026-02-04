@@ -13,11 +13,7 @@ typedef struct {
   Vector2 velocity;
 } Boid;
 
-// the `boid` position is stored independent of the window size as `f32` (0 - 1)
-// `screen_scale` is used to properly render the boid to the window. it usually
-// is just
-// `{window_width, window_height}`
-void draw_boid(Boid *boid, Vector2 screen_scale);
+void draw_boid(Boid *boid);
 
 typedef struct {
   Boid *boids;
@@ -28,7 +24,7 @@ typedef struct {
   u32 n;
 } Flock;
 
-void draw_flock(Flock *flock, Vector2 screen_scale);
-void update_flock(Flock *flock);
+void draw_flock(Flock *flock);
+void update_flock(Flock *flock, f32 screen_w, f32 screen_h);
 
 #endif // _H_BOIDS_BOID

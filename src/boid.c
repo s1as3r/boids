@@ -6,10 +6,10 @@
 #include <raymath.h>
 // clang-format on
 
-void draw_boid(Boid *boid, Vector2 screen_scale) {
+void draw_boid(Boid *boid) {
   const f32 half_width = 7.0f;
   const f32 half_height = 7.0f;
-  Vector2 center = Vector2Multiply(boid->position, screen_scale);
+  Vector2 center = boid->position;
 
   Vector2 p1 = (Vector2){-half_width, half_height};
   Vector2 p2 = (Vector2){2 * half_height, 0};
@@ -26,20 +26,19 @@ void draw_boid(Boid *boid, Vector2 screen_scale) {
   DrawTriangleFan(points, 4, WHITE);
 }
 
-void draw_flock(Flock *flock, Vector2 screen_scale) {
+void draw_flock(Flock *flock) {
   Boid *boid;
   for (u32 i = 0; i < flock->n; i++) {
     boid = &flock->boids[i];
-    draw_boid(boid, screen_scale);
+    draw_boid(boid);
 
 #if defined(BOIDS_DEBUG_DRAW)
-    Vector2 boid_center = Vector2Multiply(boid->position, screen_scale);
     DrawText(
-        TextFormat("heading: %.2f %.2f", boid->velocity.x, boid->velocity.y),
-        (i32)(boid_center.x + 20.0f), (i32)(boid_center.y), 10, GREEN);
+        TextFormat("velocity: %.2f %.2f", boid->velocity.x, boid->velocity.y),
+        (i32)(boid->position.x + 20.0f), (i32)(boid->position.y), 10, GREEN);
 
-    DrawCircleV(boid_center, flock->protected_radius, RED);
-    DrawCircleV(boid_center, flock->visual_radius, BLUE);
+    DrawCircleLinesV(boid->position, flock->protected_radius, RED);
+    DrawCircleLinesV(boid->position, flock->visual_radius, BLUE);
 #endif
   }
 }
@@ -87,16 +86,19 @@ void _flock_align(Flock *flock) {
         n_neighbors += 1;
       }
     }
-    velocity_avg = Vector2Scale(velocity_avg, 1.0f / (f32)n_neighbors);
-    me->velocity = Vector2Add(
-        me->velocity, Vector2Scale(Vector2Subtract(velocity_avg, me->velocity),
-                                   flock->matching_factor));
+    if (n_neighbors > 0) {
+      velocity_avg = Vector2Scale(velocity_avg, 1.0f / (f32)n_neighbors);
+      me->velocity =
+          Vector2Add(me->velocity,
+                     Vector2Scale(Vector2Subtract(velocity_avg, me->velocity),
+                                  flock->matching_factor));
+    }
   }
 }
 
-void update_flock(Flock *flock) {
+void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
   _flock_separate(flock);
-  // _flock_align(flock);
+  _flock_align(flock);
   f32 delta_time = GetFrameTime();
   Boid *boid;
   for (u32 i = 0; i < flock->n; i++) {
@@ -104,11 +106,11 @@ void update_flock(Flock *flock) {
     boid->position =
         Vector2Add(boid->position, Vector2Scale(boid->velocity, delta_time));
 
-    if (boid->position.x > 1.0 || boid->position.x < 0.0) {
+    if (boid->position.x > screen_w || boid->position.x < 0.0) {
       boid->velocity.x *= -1.0f;
     }
 
-    if (boid->position.y > 1.0 || boid->position.y < 0.0) {
+    if (boid->position.y > screen_h || boid->position.y < 0.0) {
       boid->velocity.y *= -1.0f;
     }
   }
