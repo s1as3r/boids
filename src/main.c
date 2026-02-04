@@ -14,12 +14,6 @@
 #include <raymath.h>
 // clang-format on
 
-void draw_boids(Boid boids[], u32 n, Vector2 scale) {
-  for (u32 i = 0; i < n; i++) {
-    draw_boid(&boids[i], scale);
-  }
-}
-
 i32 main(void) {
   const i32 window_w = 1200, window_h = 800;
   SetConfigFlags(FLAG_MSAA_4X_HINT);
@@ -29,10 +23,12 @@ i32 main(void) {
   Boid boids[5];
   u32 n_boids = array_count(boids);
   for (u32 i = 0; i < n_boids; i++) {
-    boids[i].velocity = (Vector2){2.0f * (pcg32_randomf() - 0.5f),
-                                  2.0f * (pcg32_randomf() - 0.5f)};
+    boids[i].velocity = (Vector2){0.2f * (pcg32_randomf() - 0.5f),
+                                  0.2f * (pcg32_randomf() - 0.5f)};
     boids[i].position = (Vector2){pcg32_randomf(), pcg32_randomf()};
   }
+
+  Flock flock = {.boids = boids, .n = n_boids};
 
   const Vector2 scale = {(f32)window_w, (f32)window_h};
   while (!WindowShouldClose()) {
@@ -41,7 +37,8 @@ i32 main(void) {
       ClearBackground(BLACK);
       DrawFPS(10, 10);
 
-      draw_boids(boids, n_boids, scale);
+      update_flock(&flock);
+      draw_flock(&flock, scale);
     }
     EndDrawing();
   }
