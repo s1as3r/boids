@@ -23,6 +23,8 @@ typedef struct {
   Boid *boids;
   f32 protected_radius;
   f32 avoid_factor;
+  f32 visual_radius;
+  f32 matching_factor;
   u32 n;
 } Flock;
 

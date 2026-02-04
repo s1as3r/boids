@@ -20,7 +20,7 @@ i32 main(void) {
   InitWindow(window_w, window_h, "boids");
   SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
 
-  Boid boids[30];
+  Boid boids[5];
   u32 n_boids = array_count(boids);
   for (u32 i = 0; i < n_boids; i++) {
     boids[i].velocity = (Vector2){0.2f * (pcg32_randomf() - 0.5f),
@@ -28,12 +28,16 @@ i32 main(void) {
     boids[i].position = (Vector2){pcg32_randomf(), pcg32_randomf()};
   }
 
-  Flock flock = {.boids = boids,
-                 .n = n_boids,
-                 .protected_radius = 0.05f,
-                 .avoid_factor = 0.2f};
+  Flock flock = {
+      .boids = boids,
+      .n = n_boids,
+      .protected_radius = 0.05f,
+      .avoid_factor = 0.2f,
+      .visual_radius = 0.15f,
+      .matching_factor = 0.2f,
+  };
 
-  const Vector2 scale = {(f32)window_w, (f32)window_h};
+  const Vector2 window_scale = {(f32)window_w, (f32)window_h};
   while (!WindowShouldClose()) {
     BeginDrawing();
     {
@@ -41,7 +45,7 @@ i32 main(void) {
       DrawFPS(10, 10);
 
       update_flock(&flock);
-      draw_flock(&flock, scale);
+      draw_flock(&flock, window_scale);
     }
     EndDrawing();
   }
