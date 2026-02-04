@@ -39,13 +39,38 @@ void draw_flock(Flock *flock, Vector2 screen_scale) {
   }
 }
 
+void _flock_separate(Flock *flock) {
+  Boid *me, *other;
+  Vector2 close;
+  for (u32 i = 0; i < flock->n; i++) {
+    me = &flock->boids[i];
+    close = (Vector2){0.0, 0.0};
+    for (u32 j = 0; j < flock->n; j++) {
+      if (i == j) {
+        continue;
+      }
+
+      other = &flock->boids[j];
+      if (Vector2Distance(me->position, other->position) <
+          flock->protected_radius) {
+        close =
+            Vector2Add(close, Vector2Subtract(me->position, other->position));
+      }
+    }
+    me->velocity =
+        Vector2Add(me->velocity, Vector2Scale(close, flock->avoid_factor));
+  }
+}
+
 void update_flock(Flock *flock) {
+  _flock_separate(flock);
   f32 delta_time = GetFrameTime();
   Boid *boid;
   for (u32 i = 0; i < flock->n; i++) {
     boid = &flock->boids[i];
     boid->position =
         Vector2Add(boid->position, Vector2Scale(boid->velocity, delta_time));
+
     if (boid->position.x > 1.0 || boid->position.x < 0.0) {
       boid->velocity.x *= -1.0f;
     }

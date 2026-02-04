@@ -21,6 +21,8 @@ void draw_boid(Boid *boid, Vector2 screen_scale);
 
 typedef struct {
   Boid *boids;
+  f32 protected_radius;
+  f32 avoid_factor;
   u32 n;
 } Flock;
 
