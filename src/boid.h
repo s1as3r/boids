@@ -22,6 +22,7 @@ typedef struct {
   f32 visual_radius;
   f32 matching_factor;
   f32 centering_factor;
+  f32 turn_factor;
   u32 n;
 } Flock;
 

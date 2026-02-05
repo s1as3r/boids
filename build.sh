@@ -10,7 +10,9 @@ DEBUG=(
 )
 
 # compile time defines
-DEFINES=()
+DEFINES=(
+    -DBOIDS_DEBUG_DRAW
+)
 
 # linux platform libraries
 LIBS=(

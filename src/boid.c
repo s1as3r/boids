@@ -132,17 +132,27 @@ void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
   _flock_cohere(flock);
   f32 delta_time = GetFrameTime();
   Boid *boid;
+  const i32 margin = 50;
   for (u32 i = 0; i < flock->n; i++) {
     boid = &flock->boids[i];
     boid->position =
         Vector2Add(boid->position, Vector2Scale(boid->velocity, delta_time));
 
-    if (boid->position.x > screen_w || boid->position.x < 0.0) {
-      boid->velocity.x *= -1.0f;
+    if (boid->position.x < margin) {
+      boid->velocity.x += flock->turn_factor;
     }
-
-    if (boid->position.y > screen_h || boid->position.y < 0.0) {
-      boid->velocity.y *= -1.0f;
+    if (boid->position.x > screen_w - margin) {
+      boid->velocity.x += -flock->turn_factor;
+    }
+    if (boid->position.y < margin) {
+      boid->velocity.y += flock->turn_factor;
+    }
+    if (boid->position.y > screen_h - margin) {
+      boid->velocity.y += -flock->turn_factor;
     }
   }
+#if defined(BOIDS_DEBUG_DRAW)
+  DrawRectangleLines(margin, margin, (i32)screen_w - 2 * margin,
+                     (i32)screen_h - 2 * margin, WHITE);
+#endif
 }

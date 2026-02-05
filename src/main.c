@@ -33,10 +33,11 @@ i32 main(void) {
       .boids = boids,
       .n = n_boids,
       .protected_radius = 30.0f,
-      .avoid_factor = 0.2f,
+      .avoid_factor = 0.4f,
       .visual_radius = 70.00f,
-      .matching_factor = 1.0f,
+      .matching_factor = 0.9f,
       .centering_factor = 0.2f,
+      .turn_factor = 10.0f,
   };
 
   while (!WindowShouldClose()) {

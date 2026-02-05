@@ -1,7 +1,6 @@
 #ifndef _H_BASE_DEFS
 #define _H_BASE_DEFS
 
-#define BOIDS_DEBUG_DRAW
 // clang-format off
 #include <stdbool.h>
 #include <stdint.h>
