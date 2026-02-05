@@ -6,6 +6,8 @@
 #include <raymath.h>
 // clang-format on
 
+#define ZERO_VECTOR2 ((Vector2){0.0, 0.0})
+
 void draw_boid(Boid *boid) {
   const f32 half_width = 7.0f;
   const f32 half_height = 7.0f;
@@ -43,12 +45,20 @@ void draw_flock(Flock *flock) {
   }
 }
 
-void _flock_separate(Flock *flock) {
+void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
+  f32 delta_time = GetFrameTime();
+  f32 speed;
   Boid *me, *other;
-  Vector2 close;
+  Vector2 close, avg_velocity, avg_position;
+  u32 n_neighbors = 0;
+
+  const i32 margin = 50;
   for (u32 i = 0; i < flock->n; i++) {
     me = &flock->boids[i];
-    close = (Vector2){0.0, 0.0};
+    n_neighbors = 0;
+    close = ZERO_VECTOR2;
+    avg_velocity = ZERO_VECTOR2;
+    avg_position = ZERO_VECTOR2;
     for (u32 j = 0; j < flock->n; j++) {
       if (i == j) {
         continue;
@@ -60,107 +70,57 @@ void _flock_separate(Flock *flock) {
         close =
             Vector2Add(close, Vector2Subtract(me->position, other->position));
       }
+
+      if (Vector2Distance(me->position, other->position) <
+          flock->visual_radius) {
+        avg_velocity = Vector2Add(avg_velocity, other->velocity);
+        avg_position = Vector2Add(avg_position, other->position);
+        n_neighbors += 1;
+      }
     }
+    // separation
     me->velocity =
         Vector2Add(me->velocity, Vector2Scale(close, flock->avoid_factor));
-  }
-}
 
-void _flock_align(Flock *flock) {
-  Boid *me, *other;
-  Vector2 velocity_avg;
-  u32 n_neighbors;
-  for (u32 i = 0; i < flock->n; i++) {
-    me = &flock->boids[i];
-    velocity_avg = (Vector2){0.0, 0.0};
-    n_neighbors = 0;
-    for (u32 j = 0; j < flock->n; j++) {
-      if (i == j) {
-        continue;
-      }
-
-      other = &flock->boids[j];
-      if (Vector2Distance(me->position, other->position) <
-          flock->visual_radius) {
-        velocity_avg = Vector2Add(velocity_avg, other->velocity);
-        n_neighbors += 1;
-      }
-    }
     if (n_neighbors > 0) {
-      velocity_avg = Vector2Scale(velocity_avg, 1.0f / (f32)n_neighbors);
+      // alignment
+      avg_velocity = Vector2Scale(avg_velocity, 1.0f / (f32)n_neighbors);
       me->velocity =
           Vector2Add(me->velocity,
-                     Vector2Scale(Vector2Subtract(velocity_avg, me->velocity),
+                     Vector2Scale(Vector2Subtract(avg_velocity, me->velocity),
                                   flock->matching_factor));
-    }
-  }
-}
 
-void _flock_cohere(Flock *flock) {
-  Boid *me, *other;
-  Vector2 position_avg;
-  u32 n_neighbors;
-  for (u32 i = 0; i < flock->n; i++) {
-    me = &flock->boids[i];
-    position_avg = (Vector2){0.0, 0.0};
-    n_neighbors = 0;
-    for (u32 j = 0; j < flock->n; j++) {
-      if (i == j) {
-        continue;
-      }
-
-      other = &flock->boids[j];
-      if (Vector2Distance(me->position, other->position) <
-          flock->visual_radius) {
-        position_avg = Vector2Add(position_avg, other->position);
-        n_neighbors += 1;
-      }
-    }
-    if (n_neighbors > 0) {
-      position_avg = Vector2Scale(position_avg, 1.0f / (f32)n_neighbors);
+      // cohesion
+      avg_position = Vector2Scale(avg_position, 1.0f / (f32)n_neighbors);
       me->velocity =
           Vector2Add(me->velocity,
-                     Vector2Scale(Vector2Subtract(position_avg, me->position),
+                     Vector2Scale(Vector2Subtract(avg_position, me->position),
                                   flock->centering_factor));
     }
-  }
-}
-
-void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
-  _flock_separate(flock);
-  _flock_align(flock);
-  _flock_cohere(flock);
-  f32 delta_time = GetFrameTime();
-  f32 speed;
-  Boid *boid;
-
-  const i32 margin = 50;
-  for (u32 i = 0; i < flock->n; i++) {
-    boid = &flock->boids[i];
-    speed = Vector2Length(boid->velocity);
+    speed = Vector2Length(me->velocity);
 
     if (speed > flock->max_speed) {
-      boid->velocity = Vector2Scale(boid->velocity, flock->max_speed / speed);
+      me->velocity = Vector2Scale(me->velocity, flock->max_speed / speed);
     }
 
     if (speed < flock->min_speed) {
-      boid->velocity = Vector2Scale(boid->velocity, flock->min_speed / speed);
+      me->velocity = Vector2Scale(me->velocity, flock->min_speed / speed);
     }
 
-    boid->position =
-        Vector2Add(boid->position, Vector2Scale(boid->velocity, delta_time));
+    me->position =
+        Vector2Add(me->position, Vector2Scale(me->velocity, delta_time));
 
-    if (boid->position.x < margin) {
-      boid->velocity.x += flock->turn_factor;
+    if (me->position.x < margin) {
+      me->velocity.x += flock->turn_factor;
     }
-    if (boid->position.x > screen_w - margin) {
-      boid->velocity.x += -flock->turn_factor;
+    if (me->position.x > screen_w - margin) {
+      me->velocity.x += -flock->turn_factor;
     }
-    if (boid->position.y < margin) {
-      boid->velocity.y += flock->turn_factor;
+    if (me->position.y < margin) {
+      me->velocity.y += flock->turn_factor;
     }
-    if (boid->position.y > screen_h - margin) {
-      boid->velocity.y += -flock->turn_factor;
+    if (me->position.y > screen_h - margin) {
+      me->velocity.y += -flock->turn_factor;
     }
   }
 #if defined(BOIDS_DEBUG_DRAW)

@@ -38,8 +38,8 @@ i32 main(void) {
       .matching_factor = 0.5f,
       .centering_factor = 0.05f,
       .turn_factor = 20.0f,
-      .min_speed = 20.0f,
-      .max_speed = 200.0f,
+      .min_speed = 50.0f,
+      .max_speed = 300.0f,
   };
 
   while (!WindowShouldClose()) {

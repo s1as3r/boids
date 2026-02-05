@@ -11,7 +11,7 @@ DEBUG=(
 
 # compile time defines
 DEFINES=(
-    -DBOIDS_DEBUG_DRAW
+    # -DBOIDS_DEBUG_DRAW
 )
 
 # linux platform libraries
@@ -36,7 +36,7 @@ COMP_FLAGS=(
 )
 
 # Build commands
-EXE_CMD=("$COMPILER" "${DEFINES[@]}" "${DEBUG[@]}" "${COMP_FLAGS[@]}" \
+EXE_CMD=("$COMPILER" "${@}" "${DEFINES[@]}" "${DEBUG[@]}" "${COMP_FLAGS[@]}" \
          "-o" "$EXE_NAME" "$SRC/main.c" "${LIBS[@]}")
 
 EXE_CMD_STR=$(IFS=' '; echo "${EXE_CMD[*]}")
