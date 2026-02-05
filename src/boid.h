@@ -23,6 +23,8 @@ typedef struct {
   f32 matching_factor;
   f32 centering_factor;
   f32 turn_factor;
+  f32 min_speed;
+  f32 max_speed;
   u32 n;
 } Flock;
 

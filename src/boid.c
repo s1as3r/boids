@@ -131,10 +131,22 @@ void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
   _flock_align(flock);
   _flock_cohere(flock);
   f32 delta_time = GetFrameTime();
+  f32 speed;
   Boid *boid;
+
   const i32 margin = 50;
   for (u32 i = 0; i < flock->n; i++) {
     boid = &flock->boids[i];
+    speed = Vector2Length(boid->velocity);
+
+    if (speed > flock->max_speed) {
+      boid->velocity = Vector2Scale(boid->velocity, flock->max_speed / speed);
+    }
+
+    if (speed < flock->min_speed) {
+      boid->velocity = Vector2Scale(boid->velocity, flock->min_speed / speed);
+    }
+
     boid->position =
         Vector2Add(boid->position, Vector2Scale(boid->velocity, delta_time));
 
