@@ -15,18 +15,18 @@
 // clang-format on
 
 i32 main(void) {
-  const i32 window_w = 1200, window_h = 800;
+  const i32 env_w = 1600, env_h = 1200;
   SetConfigFlags(FLAG_MSAA_4X_HINT);
-  InitWindow(window_w, window_h, "boids");
+  InitWindow(env_w, env_h, "boids");
   SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
 
-  Boid boids[15];
+  Boid boids[500];
   u32 n_boids = array_count(boids);
   for (u32 i = 0; i < n_boids; i++) {
     boids[i].velocity = (Vector2){100.0f * 2.0f * (pcg32_randomf() - 0.5f),
                                   100.0f * 2.0f * (pcg32_randomf() - 0.5f)};
     boids[i].position =
-        (Vector2){pcg32_randomf() * window_w, pcg32_randomf() * window_h};
+        (Vector2){pcg32_randomf() * env_w, pcg32_randomf() * env_h};
   }
 
   Flock flock = {
@@ -42,17 +42,34 @@ i32 main(void) {
       .max_speed = 300.0f,
   };
 
+  RenderTexture2D target = LoadRenderTexture(env_w, env_h);
   while (!WindowShouldClose()) {
-    BeginDrawing();
+    update_flock(&flock, env_w, env_h);
+    BeginTextureMode(target);
     {
       ClearBackground(BLACK);
-      DrawFPS(10, 10);
-
-      update_flock(&flock, window_w, window_h);
       draw_flock(&flock);
     }
+    EndTextureMode();
+    BeginDrawing();
+    {
+      DrawTexturePro(target.texture,
+                     (Rectangle){.x = 0,
+                                 .y = 0,
+                                 .width = (f32)target.texture.width,
+                                 .height = (f32)target.texture.height},
+                     (Rectangle){.x = 0.0,
+                                 .y = 0.0,
+                                 .width = (f32)GetScreenWidth(),
+                                 .height = (f32)GetScreenHeight()},
+                     (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+      DrawFPS(10, 10);
+    }
     EndDrawing();
+    EndTextureMode();
   }
 
+  UnloadRenderTexture(target);
+  CloseWindow();
   return 0;
 }
