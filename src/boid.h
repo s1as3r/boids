@@ -21,6 +21,7 @@ typedef struct {
   f32 avoid_factor;
   f32 visual_radius;
   f32 matching_factor;
+  f32 centering_factor;
   u32 n;
 } Flock;
 

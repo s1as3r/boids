@@ -96,9 +96,40 @@ void _flock_align(Flock *flock) {
   }
 }
 
+void _flock_cohere(Flock *flock) {
+  Boid *me, *other;
+  Vector2 position_avg;
+  u32 n_neighbors;
+  for (u32 i = 0; i < flock->n; i++) {
+    me = &flock->boids[i];
+    position_avg = (Vector2){0.0, 0.0};
+    n_neighbors = 0;
+    for (u32 j = 0; j < flock->n; j++) {
+      if (i == j) {
+        continue;
+      }
+
+      other = &flock->boids[j];
+      if (Vector2Distance(me->position, other->position) <
+          flock->visual_radius) {
+        position_avg = Vector2Add(position_avg, other->position);
+        n_neighbors += 1;
+      }
+    }
+    if (n_neighbors > 0) {
+      position_avg = Vector2Scale(position_avg, 1.0f / (f32)n_neighbors);
+      me->velocity =
+          Vector2Add(me->velocity,
+                     Vector2Scale(Vector2Subtract(position_avg, me->position),
+                                  flock->centering_factor));
+    }
+  }
+}
+
 void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
   _flock_separate(flock);
   _flock_align(flock);
+  _flock_cohere(flock);
   f32 delta_time = GetFrameTime();
   Boid *boid;
   for (u32 i = 0; i < flock->n; i++) {
