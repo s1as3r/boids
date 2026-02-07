@@ -13,8 +13,6 @@ typedef struct {
   Vector2 velocity;
 } Boid;
 
-void draw_boid(Boid *boid);
-
 typedef struct {
   Boid *boids;
   f32 protected_radius;
@@ -26,9 +24,18 @@ typedef struct {
   f32 min_speed;
   f32 max_speed;
   u32 n;
+
+  // stuff i dont want a config struct for
+  Vector2 env_bounds_min; // usually 0, 0
+  Vector2 env_bounds_max; // usually window_width, window_height
+  bool debug_draw;
+  bool debug_protected;
+  bool debug_visual;
+  bool debug_env_edge;
+  bool debug_velocity;
 } Flock;
 
 void draw_flock(Flock *flock);
-void update_flock(Flock *flock, f32 screen_w, f32 screen_h);
+void update_flock(Flock *flock);
 
 #endif // _H_BOIDS_BOID

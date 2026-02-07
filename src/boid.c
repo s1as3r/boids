@@ -34,25 +34,42 @@ void draw_flock(Flock *flock) {
     boid = &flock->boids[i];
     draw_boid(boid);
 
-#if defined(BOIDS_DEBUG_DRAW)
-    DrawText(
-        TextFormat("velocity: %.2f %.2f", boid->velocity.x, boid->velocity.y),
-        (i32)(boid->position.x + 20.0f), (i32)(boid->position.y), 10, GREEN);
+    if (!flock->debug_draw) {
+      continue;
+    }
 
-    DrawCircleLinesV(boid->position, flock->protected_radius, RED);
-    DrawCircleLinesV(boid->position, flock->visual_radius, BLUE);
-#endif
+    if (flock->debug_velocity) {
+      DrawText(TextFormat("(%.2f %.2f)", boid->velocity.x, boid->velocity.y),
+               (i32)(boid->position.x + 20.0f), (i32)(boid->position.y), 10,
+               GREEN);
+    }
+
+    if (flock->debug_protected) {
+      DrawCircleLinesV(boid->position, flock->protected_radius, RED);
+    }
+
+    if (flock->debug_visual) {
+      DrawCircleLinesV(boid->position, flock->visual_radius, BLUE);
+    }
+  }
+  if (flock->debug_draw && flock->debug_env_edge) {
+    Rectangle rec = {0};
+    rec.x = flock->env_bounds_min.x;
+    rec.y = flock->env_bounds_min.y;
+    rec.width = flock->env_bounds_max.x - rec.x;
+    rec.height = flock->env_bounds_max.y - rec.y;
+
+    DrawRectangleLinesEx(rec, 3, WHITE);
   }
 }
 
-void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
+void update_flock(Flock *flock) {
   f32 delta_time = GetFrameTime();
   f32 speed;
   Boid *me, *other;
   Vector2 close, avg_velocity, avg_position;
   u32 n_neighbors = 0;
 
-  const i32 margin = 50;
   for (u32 i = 0; i < flock->n; i++) {
     me = &flock->boids[i];
     n_neighbors = 0;
@@ -110,21 +127,17 @@ void update_flock(Flock *flock, f32 screen_w, f32 screen_h) {
     me->position =
         Vector2Add(me->position, Vector2Scale(me->velocity, delta_time));
 
-    if (me->position.x < margin) {
+    if (me->position.x < flock->env_bounds_min.x) {
       me->velocity.x += flock->turn_factor;
     }
-    if (me->position.x > screen_w - margin) {
+    if (me->position.x > flock->env_bounds_max.x) {
       me->velocity.x += -flock->turn_factor;
     }
-    if (me->position.y < margin) {
+    if (me->position.y < flock->env_bounds_min.y) {
       me->velocity.y += flock->turn_factor;
     }
-    if (me->position.y > screen_h - margin) {
+    if (me->position.y > flock->env_bounds_max.y) {
       me->velocity.y += -flock->turn_factor;
     }
   }
-#if defined(BOIDS_DEBUG_DRAW)
-  DrawRectangleLines(margin, margin, (i32)screen_w - 2 * margin,
-                     (i32)screen_h - 2 * margin, WHITE);
-#endif
 }

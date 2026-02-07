@@ -1,6 +1,8 @@
 CompileFlags:
   Add: [
     "-xc",
+    "-I../external/rlImGui",
+    "-I../external/cimgui",
     "-Wall",
     "-Wextra",
     "-Wpedantic",
