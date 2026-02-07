@@ -23,7 +23,9 @@ typedef struct {
   f32 turn_factor;
   f32 min_speed;
   f32 max_speed;
+  Color color;
   u32 n;
+  u64 id;
 
   // stuff i dont want a config struct for
   Vector2 env_bounds_min; // usually 0, 0
@@ -35,7 +37,10 @@ typedef struct {
   bool debug_velocity;
 } Flock;
 
-void draw_flock(Flock *flock);
+Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,
+                 Vector2 env_bounds_max);
+void deinit_flock(Flock flock);
+void draw_flock(const Flock *flock);
 void update_flock(Flock *flock);
 
 #endif // _H_BOIDS_BOID

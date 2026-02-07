@@ -8,6 +8,7 @@
 #include "base.h"
 
 #include "boid.c"
+#include "boid.h"
 #include "rand.c"
 
 #include <raylib.h>
@@ -19,15 +20,44 @@
 #include <cimgui.h>
 // clang-format on
 
-void draw_ui(Flock *flock) {
-  if (igCollapsingHeader_BoolPtr("Debug Draw##dbg", NULL, 0)) {
+Color _imcolor_to_rl(const ImVec4_c *color) {
+  return (Color){
+      .r = (u8)(color->x * 255),
+      .g = (u8)(color->y * 255),
+      .b = (u8)(color->z * 255),
+      .a = (u8)(color->w * 255),
+  };
+}
+
+ImVec4_c _rlcolor_to_im(const Color *color) {
+  return (ImVec4_c){
+      .x = ((f32)color->r / 255.0f),
+      .y = ((f32)color->g / 255.0f),
+      .z = ((f32)color->b / 255.0f),
+      .w = ((f32)color->a / 255.0f),
+  };
+}
+
+void draw_ui_single_flock(Flock *flock) {
+  if (igTreeNode_Str("Debug Draw##dbg")) {
     igCheckbox("Enable##dbg", &flock->debug_draw);
+    if (!flock->debug_draw) {
+      igBeginDisabled(true);
+    }
     igCheckbox("Protected Radius##dbg", &flock->debug_protected);
     igCheckbox("Visual Radius##dbg", &flock->debug_visual);
     igCheckbox("Env Edges##dbg", &flock->debug_env_edge);
     igCheckbox("Velocity##dbg", &flock->debug_velocity);
+    if (!flock->debug_draw) {
+      igEndDisabled();
+    }
     igSeparator();
+    igTreePop();
   }
+  ImVec4_c color = _rlcolor_to_im(&flock->color);
+  igColorEdit3("Color", (float *)&color, ImGuiColorEditFlags_None);
+  flock->color = _imcolor_to_rl(&color);
+
   igSliderFloat("Protected Radius", &flock->protected_radius, 0.0f,
                 flock->visual_radius, "%.2f", ImGuiSliderFlags_None);
   igSliderFloat("Visual Radius", &flock->visual_radius, 0.0f, 400.0f, "%.2f",
@@ -44,6 +74,17 @@ void draw_ui(Flock *flock) {
                 ImGuiSliderFlags_None);
   igSliderFloat("Max Speed", &flock->max_speed, 100.0f, 500.0f, "%.2f",
                 ImGuiSliderFlags_None);
+  igSeparator();
+}
+
+void draw_ui(Flock *flocks, u64 n) {
+  Flock *flock;
+  for (u64 i = 0; i < n; i++) {
+    flock = &flocks[i];
+    igBegin(TextFormat("Flock %d", i), NULL, ImGuiWindowFlags_AlwaysAutoResize);
+    draw_ui_single_flock(flock);
+    igEnd();
+  }
 }
 
 i32 main(void) {
@@ -62,43 +103,28 @@ i32 main(void) {
 
   igGetIO_Nil()->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-  Boid boids[500];
-  u32 n_boids = array_count(boids);
-  for (u32 i = 0; i < n_boids; i++) {
-    boids[i].velocity = (Vector2){100.0f * 2.0f * (pcg32_randomf() - 0.5f),
-                                  100.0f * 2.0f * (pcg32_randomf() - 0.5f)};
-    boids[i].position =
-        (Vector2){pcg32_randomf() * screen_w, pcg32_randomf() * screen_h};
-  }
-
   const f32 margin = 75.0f;
-  Flock flock = {
-      .boids = boids,
-      .n = n_boids,
-      .protected_radius = 30.0f,
-      .avoid_factor = 0.5f,
-      .visual_radius = 70.00f,
-      .matching_factor = 0.5f,
-      .centering_factor = 0.05f,
-      .turn_factor = 20.0f,
-      .min_speed = 50.0f,
-      .max_speed = 300.0f,
-      .env_bounds_min = {margin, margin},
-      .env_bounds_max = {screen_w - margin, screen_h - margin},
-      .debug_draw = true,
-      .debug_protected = false,
-      .debug_visual = false,
-      .debug_env_edge = false,
-      .debug_velocity = false,
+  Vector2 env_bounds_min = {margin, margin};
+  Vector2 env_bounds_max = {screen_w - margin, screen_h - margin};
+
+  Flock flocks[3] = {
+      init_flock(0, 100, WHITE, env_bounds_min, env_bounds_max),
+      init_flock(1, 100, BLUE, env_bounds_min, env_bounds_max),
+      init_flock(2, 100, GREEN, env_bounds_min, env_bounds_max),
   };
+  u64 n_flocks = array_count(flocks);
 
   RenderTexture2D target = LoadRenderTexture(screen_w, screen_h);
   while (!WindowShouldClose()) {
-    update_flock(&flock);
+    for (u32 i = 0; i < n_flocks; i++) {
+      update_flock(&flocks[i]);
+    }
     BeginTextureMode(target);
     {
       ClearBackground(BLACK);
-      draw_flock(&flock);
+      for (u32 i = 0; i < n_flocks; i++) {
+        draw_flock(&flocks[i]);
+      }
     }
     EndTextureMode();
 
@@ -119,17 +145,16 @@ i32 main(void) {
       rlImGuiBegin();
       igDockSpaceOverViewport(0, NULL, ImGuiDockNodeFlags_PassthruCentralNode,
                               NULL);
-      igBegin("Parameters", NULL, ImGuiWindowFlags_AlwaysAutoResize);
-      {
-        draw_ui(&flock);
-      }
-      igEnd();
+      draw_ui(flocks, n_flocks);
       rlImGuiEnd();
     }
     EndDrawing();
     EndTextureMode();
   }
 
+  for (u64 i = 0; i < n_flocks; i++) {
+    deinit_flock(flocks[i]);
+  }
   rlImGuiShutdown();
   UnloadRenderTexture(target);
   CloseWindow();

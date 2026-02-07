@@ -1,6 +1,7 @@
 // clang-format off
 #include "base.h"
 #include "boid.h"
+#include "rand.h"
 
 #include <raylib.h>
 #include <raymath.h>
@@ -8,7 +9,7 @@
 
 #define ZERO_VECTOR2 ((Vector2){0.0, 0.0})
 
-void draw_boid(Boid *boid) {
+void draw_boid(const Boid *boid, const Color *color) {
   const f32 half_width = 7.0f;
   const f32 half_height = 7.0f;
   Vector2 center = boid->position;
@@ -25,14 +26,51 @@ void draw_boid(Boid *boid) {
                       Vector2Add(center, Vector2Rotate(p2, angle)),
                       Vector2Add(center, Vector2Rotate(p3, angle))};
 
-  DrawTriangleFan(points, 4, WHITE);
+  DrawTriangleFan(points, 4, *color);
 }
 
-void draw_flock(Flock *flock) {
+Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,
+                 Vector2 env_bounds_max) {
+  Boid *boids = MemAlloc(sizeof(Boid) * n);
+  for (u32 i = 0; i < n; i++) {
+    boids[i].velocity = (Vector2){100.0f * 2.0f * (pcg32_randomf() - 0.5f),
+                                  100.0f * 2.0f * (pcg32_randomf() - 0.5f)};
+    boids[i].position = (Vector2){pcg32_randomf() * env_bounds_max.x,
+                                  pcg32_randomf() * env_bounds_max.y};
+  }
+
+  Flock flock = {
+      .id = id,
+      .boids = boids,
+      .n = n,
+      .color = color,
+      .protected_radius = 30.0f,
+      .avoid_factor = 0.5f,
+      .visual_radius = 70.00f,
+      .matching_factor = 0.5f,
+      .centering_factor = 0.05f,
+      .turn_factor = 20.0f,
+      .min_speed = 50.0f,
+      .max_speed = 300.0f,
+      .env_bounds_min = env_bounds_min,
+      .env_bounds_max = env_bounds_max,
+      .debug_draw = true,
+      .debug_protected = false,
+      .debug_visual = false,
+      .debug_env_edge = false,
+      .debug_velocity = false,
+  };
+
+  return flock;
+}
+
+void deinit_flock(Flock flock) { MemFree(flock.boids); }
+
+void draw_flock(const Flock *flock) {
   Boid *boid;
   for (u32 i = 0; i < flock->n; i++) {
     boid = &flock->boids[i];
-    draw_boid(boid);
+    draw_boid(boid, &flock->color);
 
     if (!flock->debug_draw) {
       continue;
