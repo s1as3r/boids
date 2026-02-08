@@ -54,6 +54,7 @@ build_rlimgui_web() {
         -I"$CIMGUI_PATH/imgui" \
         -I"$RAYLIB_PATH/src" \
         -DPLATFORM_WEB \
+        -DRLIMGUI_ALWAYS_TRACK_MOUSE \
         -fno-exceptions -fno-rtti
 
     emar rcs librlImGui.web.a rlImGui.o
