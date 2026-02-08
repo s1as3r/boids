@@ -4,3 +4,6 @@
 [submodule "external/cimgui"]
 	path = external/cimgui
 	url = https://github.com/cimgui/cimgui
+[submodule "external/raylib"]
+	path = external/raylib
+	url = https://github.com/raysan5/raylib

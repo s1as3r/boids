@@ -2,27 +2,36 @@
 BUILD_PATH="build"
 SRC="../src"
 EXE_NAME="boids"
-CC="gcc"
 
 CIMGUI_PATH=$(realpath  ./external/cimgui/)
-CIMGUI_LIB="$CIMGUI_PATH"
 RLIMGUI_PATH=$(realpath ./external/rlImGui)
-RLIMGUI_LIB="$RLIMGUI_PATH/bin/Release"
+RAYLIB_PATH=$(realpath ./external/raylib/src)
 
 build_rlimgui() {
-    cd "$RLIMGUI_PATH" && 
-        premake5 gmake && 
-        make config=release_x64 rlImGui
+    cd "$RLIMGUI_PATH" || return 1
+    g++ -O2 -c rlImGui.cpp -o rlImGui.o \
+        -I. \
+        -I"$CIMGUI_PATH" \
+        -I"$CIMGUI_PATH/imgui" \
+        -I"$RAYLIB_PATH" \
+        -DPLATFORM_DESKTOP \
+        -fno-exceptions -fno-rtti
+
+    ar -rcs librlImGui.a rlImGui.o
+}
+
+build_raylib() {
+    cd "$RAYLIB_PATH" &&
+        make PLATFORM=PLATFORM_DESKTOP RAYLIB_BUILD_MODE=RELEASE RAYLIB_LIBTYPE=STATIC -j4 RAYLIB_PROJECT_RELEASE_PATH=. -B
 }
 
 build_cimgui() {
-    cd "$CIMGUI_PATH" &&
-        make static
+    cd "$CIMGUI_PATH" && make -B static
 }
 
 build_external() {
     git submodule update --init --recursive
-    (build_cimgui) && (build_rlimgui)
+    (build_raylib) && (build_cimgui) && (build_rlimgui)
 }
 
 # debug flags
@@ -37,11 +46,9 @@ DEFINES=(
 
 # linux platform libraries
 LIBS=(
-    "-L$CIMGUI_LIB"
-    "-L$RLIMGUI_LIB"
-    "-lraylib"
-    "-lrlImGui"
-    "-lcimgui"
+    "$RAYLIB_PATH/libraylib.a"
+    "$RLIMGUI_PATH/librlImGui.a"
+    "$CIMGUI_PATH/libcimgui.a"
     "-lm"
     "-lpthread"
     "-ldl"
@@ -53,8 +60,9 @@ LIBS=(
 
 # compiler flags
 COMP_FLAGS=(
-    "-I$(realpath ./external/cimgui/)"
-    "-I$(realpath ./external/rlImGui/)"
+    "-I$RAYLIB_PATH"
+    "-I$CIMGUI_PATH"
+    "-I$RLIMGUI_PATH"
     "-Wall"
     "-Wextra"
     "-Wpedantic"
@@ -64,7 +72,7 @@ COMP_FLAGS=(
 )
 
 # Build commands
-EXE_CMD=("$CC" "${@}" "${DEFINES[@]}" "${DEBUG[@]}" "${COMP_FLAGS[@]}" \
+EXE_CMD=("gcc" "${@}" "${DEFINES[@]}" "${DEBUG[@]}" "${COMP_FLAGS[@]}" \
          "-o" "$EXE_NAME" "$SRC/main.c" "${LIBS[@]}")
 
 EXE_CMD_STR=$(IFS=' '; echo "${EXE_CMD[*]}")
