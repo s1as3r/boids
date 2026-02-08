@@ -1,0 +1,176 @@
+name: WebAssembly
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/**'
+      - '.github/workflows/webassembly.yml'
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  PROJECT_NAME: ${{ github.event.repository.name }}
+  PROJECT_RELEASE_PATH: ${{ github.event.repository.name }}_dev_wasm
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout this repo with submodules
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup emsdk
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: 3.1.64
+        actions-cache-folder: 'emsdk-cache'
+
+    - name: Setup Release Paths
+      run: |
+        echo "PROJECT_RELEASE_PATH=${{ env.PROJECT_NAME }}_v${{ github.event.release.tag_name }}_wasm" >> $GITHUB_ENV
+      if: github.event_name == 'release' && github.event.action == 'published'
+
+    - name: Setup Environment
+      run: | 
+        mkdir -p ${{ env.PROJECT_RELEASE_PATH }}
+        ls -la
+
+    - name: Build raylib Library
+      run: |
+        cd external/raylib/src
+        emcc -v
+        make PLATFORM=PLATFORM_WEB RAYLIB_BUILD_MODE=RELEASE RAYLIB_LIBTYPE=STATIC -j4 RAYLIB_PROJECT_RELEASE_PATH=. -B
+
+    - name: Build cimgui Library
+      run: |
+        cd external/cimgui
+        emcc -O2 -c cimgui.cpp -o cimgui.o \
+            -I./imgui/ \
+            -fno-exceptions -fno-rtti
+        emcc -O2 -c ./imgui/imgui.cpp -o ./imgui/imgui.o \
+            -I./imgui/ \
+            -fno-exceptions -fno-rtti
+        emcc -O2 -c ./imgui/imgui_draw.cpp -o ./imgui/imgui_draw.o \
+            -I./imgui/ \
+            -fno-exceptions -fno-rtti
+        emcc -O2 -c ./imgui/imgui_demo.cpp -o ./imgui/imgui_demo.o \
+            -I./imgui/ \
+            -fno-exceptions -fno-rtti
+        emcc -O2 -c ./imgui/imgui_tables.cpp -o ./imgui/imgui_tables.o \
+            -I./imgui/ \
+            -fno-exceptions -fno-rtti
+        emcc -O2 -c ./imgui/imgui_widgets.cpp -o ./imgui/imgui_widgets.o \
+            -I./imgui/ \
+            -fno-exceptions -fno-rtti
+        emar rcs libcimgui.web.a cimgui.o ./imgui/imgui.o ./imgui/imgui_draw.o \
+            ./imgui/imgui_demo.o ./imgui/imgui_tables.o ./imgui/imgui_widgets.o
+
+    - name: Build rlImGui Library
+      run: |
+        cd external/rlImGui
+        CIMGUI_PATH=$(realpath ../cimgui)
+        RAYLIB_PATH=$(realpath ../raylib)
+        em++ -O2 -c rlImGui.cpp -o rlImGui.o \
+            -I. \
+            -I"$CIMGUI_PATH" \
+            -I"$CIMGUI_PATH/imgui" \
+            -I"$RAYLIB_PATH/src" \
+            -DPLATFORM_WEB \
+            -fno-exceptions -fno-rtti
+        emar rcs librlImGui.web.a rlImGui.o
+
+    - name: Build Product
+      run: |
+        mkdir -p build
+        cd build
+        CIMGUI_PATH=$(realpath ../external/cimgui)
+        RLIMGUI_PATH=$(realpath ../external/rlImGui)
+        RAYLIB_PATH=$(realpath ../external/raylib)
+        emcc -o boids.html \
+            ../src/main.c \
+            "$RAYLIB_PATH/src/libraylib.web.a" \
+            "$RLIMGUI_PATH/librlImGui.web.a" \
+            "$CIMGUI_PATH/libcimgui.web.a" \
+            -I"$CIMGUI_PATH" \
+            -I"$RLIMGUI_PATH" \
+            -I"$RAYLIB_PATH/src" \
+            -std=c11 \
+            -Wall \
+            -DPLATFORM_WEB \
+            -DGRAPHICS_API_OPENGL_ES2 \
+            -sUSE_GLFW=3 \
+            -sASYNCIFY \
+            -sALLOW_MEMORY_GROWTH=1 \
+            -sFULL_ES2=1 \
+            --shell-file ../src/minshell.html \
+            -Os \
+            -Wall
+  
+    - name: Generate Artifacts
+      run: |
+        ls -la build/
+        cp build/boids.wasm ${{ env.PROJECT_RELEASE_PATH }}/boids.wasm
+        cp build/boids.js ${{ env.PROJECT_RELEASE_PATH }}/boids.js
+        cp build/boids.html ${{ env.PROJECT_RELEASE_PATH }}/index.html
+        cp assets/icon.ico ${{ env.PROJECT_RELEASE_PATH }}/icon.ico
+        if [ -f README.md ]; then cp README.md ${{ env.PROJECT_RELEASE_PATH }}/README.md; fi
+        if [ -f LICENSE ]; then cp LICENSE ${{ env.PROJECT_RELEASE_PATH }}/LICENSE; fi
+        ls -la ${{ env.PROJECT_RELEASE_PATH }}/
+        cd ${{ env.PROJECT_RELEASE_PATH }} && zip -r ../${{ env.PROJECT_RELEASE_PATH }}.zip .
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.PROJECT_RELEASE_PATH }}.zip
+        path: ./${{ env.PROJECT_RELEASE_PATH }}.zip
+
+    - name: Upload Artifact to Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: ${{ env.PROJECT_RELEASE_PATH }}.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      if: github.event_name == 'release' && github.event.action == 'published'
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    permissions:
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.PROJECT_RELEASE_PATH }}.zip
+          path: ./site-zip
+
+      - name: Unzip site
+        run: |
+          mkdir site
+          unzip ./site-zip/${{ env.PROJECT_RELEASE_PATH }}.zip -d site
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
