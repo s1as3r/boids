@@ -86,7 +86,6 @@ i32 main(void) {
       rlImGuiEnd();
     }
     EndDrawing();
-    EndTextureMode();
   }
 
   for (u64 i = 0; i < n_flocks; i++) {
