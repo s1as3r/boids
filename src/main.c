@@ -25,7 +25,7 @@ void draw_ui_single_flock(Flock *flock);
 void draw_ui(Flock *flocks, u64 n);
 
 i32 main(void) {
-  const i32 screen_w = 1600, screen_h = 1200;
+  const i32 screen_w = 1600, screen_h = 1000;
   SetConfigFlags(FLAG_MSAA_4X_HINT);
   InitWindow(screen_w, screen_h, "boids");
   SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));

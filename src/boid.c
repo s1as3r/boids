@@ -97,7 +97,7 @@ void draw_flock(const Flock *flock) {
     rec.width = flock->env_bounds_max.x - rec.x;
     rec.height = flock->env_bounds_max.y - rec.y;
 
-    DrawRectangleLinesEx(rec, 3, WHITE);
+    DrawRectangleLinesEx(rec, 3, flock->color);
   }
 }
 
