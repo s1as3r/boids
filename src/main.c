@@ -71,7 +71,7 @@ i32 main(void) {
                      (Rectangle){.x = 0,
                                  .y = 0,
                                  .width = (f32)target.texture.width,
-                                 .height = (f32)target.texture.height},
+                                 .height = (f32)-target.texture.height},
                      (Rectangle){.x = 0.0,
                                  .y = 0.0,
                                  .width = (f32)GetScreenWidth(),
