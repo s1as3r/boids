@@ -76,7 +76,7 @@ i32 main(void) {
                                  .y = 0.0,
                                  .width = (f32)GetScreenWidth(),
                                  .height = (f32)GetScreenHeight()},
-                     (Vector2){0.0f, 0.0f}, 0.0f, WHITE);
+                     ZERO_VECTOR2, 0.0f, WHITE);
       DrawFPS(10, 10);
 
       rlImGuiBegin();
@@ -117,15 +117,15 @@ ImVec4_c _rlcolor_to_im(const Color *color) {
 
 void draw_ui_single_flock(Flock *flock) {
   if (igTreeNode_Str("Debug Draw##dbg")) {
-    igCheckbox("Enable##dbg", &flock->debug_draw);
-    if (!flock->debug_draw) {
+    igCheckbox("Enable##dbg", &flock->debug_draw.enabled);
+    if (!flock->debug_draw.enabled) {
       igBeginDisabled(true);
     }
-    igCheckbox("Protected Radius##dbg", &flock->debug_protected);
-    igCheckbox("Visual Radius##dbg", &flock->debug_visual);
-    igCheckbox("Env Edges##dbg", &flock->debug_env_edge);
-    igCheckbox("Velocity##dbg", &flock->debug_velocity);
-    if (!flock->debug_draw) {
+    igCheckbox("Protected Radius##dbg", &flock->debug_draw.protected);
+    igCheckbox("Visual Radius##dbg", &flock->debug_draw.visual);
+    igCheckbox("Env Edges##dbg", &flock->debug_draw.env_edge);
+    igCheckbox("Velocity##dbg", &flock->debug_draw.velocity);
+    if (!flock->debug_draw.enabled) {
       igEndDisabled();
     }
     igSeparator();

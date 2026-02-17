@@ -11,6 +11,7 @@
 #define local_persist static
 
 #define PI32 3.1415926536f
+#define ZERO_VECTOR2 ((Vector2){0.0, 0.0})
 #define array_count(arr) (sizeof(arr) / sizeof(arr[0]))
 
 // clang-format off

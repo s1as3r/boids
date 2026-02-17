@@ -7,7 +7,7 @@
 #include <raymath.h>
 // clang-format on
 
-#define ZERO_VECTOR2 ((Vector2){0.0, 0.0})
+#define MOUSE_DELTA_TO_VELOCITY 350.0f
 
 void draw_boid(const Boid *boid, const Color *color) {
   const f32 half_width = 7.0f;
@@ -39,32 +39,63 @@ Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,
                                   pcg32_randomf() * env_bounds_max.y};
   }
 
+  // clang-format off
   Flock flock = {
-      .id = id,
-      .boids = boids,
-      .n = n,
-      .color = color,
-      .protected_radius = 30.0f,
-      .avoid_factor = 0.5f,
-      .visual_radius = 70.00f,
-      .matching_factor = 0.5f,
-      .centering_factor = 0.05f,
-      .turn_factor = 20.0f,
-      .min_speed = 50.0f,
-      .max_speed = 300.0f,
-      .env_bounds_min = env_bounds_min,
-      .env_bounds_max = env_bounds_max,
-      .debug_draw = true,
-      .debug_protected = false,
-      .debug_visual = false,
-      .debug_env_edge = false,
-      .debug_velocity = false,
+    .id = id,
+    .boids = boids,
+    .n = n,
+    .color = color,
+    .protected_radius = 30.0f,
+    .avoid_factor = 0.5f,
+    .visual_radius = 70.00f,
+    .matching_factor = 0.5f,
+    .centering_factor = 0.05f,
+    .turn_factor = 20.0f,
+    .min_speed = 50.0f,
+    .max_speed = 300.0f,
+    .env_bounds_min = env_bounds_min,
+    .env_bounds_max = env_bounds_max,
+    .debug_draw = {
+      .enabled = true,
+      .protected = false,
+      .visual = false,
+      .env_edge = false,
+      .velocity = false,
+    },
   };
+  // clang-format on
 
   return flock;
 }
 
 void deinit_flock(Flock flock) { MemFree(flock.boids); }
+
+void _debug_draw_boid(const Boid *boid, f32 protected_radius, f32 visual_radius,
+                      DebugFlags debug_draw) {
+  if (!debug_draw.enabled) {
+    return;
+  }
+
+  if (debug_draw.velocity) {
+    DrawText(TextFormat("(%.2f %.2f)", boid->velocity.x, boid->velocity.y),
+             (i32)(boid->position.x + 20.0f), (i32)(boid->position.y), 10,
+             GREEN);
+  }
+
+  if (debug_draw.protected) {
+    DrawCircleLinesV(boid->position, protected_radius, RED);
+  }
+
+  if (debug_draw.visual) {
+    DrawCircleLinesV(boid->position, visual_radius, BLUE);
+  }
+}
+
+Boid _get_mouse_boid(void) {
+  return (Boid){.position = GetMousePosition(),
+                .velocity =
+                    Vector2Scale(GetMouseDelta(), MOUSE_DELTA_TO_VELOCITY)};
+}
 
 void draw_flock(const Flock *flock) {
   Boid *boid;
@@ -72,25 +103,10 @@ void draw_flock(const Flock *flock) {
     boid = &flock->boids[i];
     draw_boid(boid, &flock->color);
 
-    if (!flock->debug_draw) {
-      continue;
-    }
-
-    if (flock->debug_velocity) {
-      DrawText(TextFormat("(%.2f %.2f)", boid->velocity.x, boid->velocity.y),
-               (i32)(boid->position.x + 20.0f), (i32)(boid->position.y), 10,
-               GREEN);
-    }
-
-    if (flock->debug_protected) {
-      DrawCircleLinesV(boid->position, flock->protected_radius, RED);
-    }
-
-    if (flock->debug_visual) {
-      DrawCircleLinesV(boid->position, flock->visual_radius, BLUE);
-    }
+    _debug_draw_boid(boid, flock->protected_radius, flock->visual_radius,
+                     flock->debug_draw);
   }
-  if (flock->debug_draw && flock->debug_env_edge) {
+  if (flock->debug_draw.enabled && flock->debug_draw.env_edge) {
     Rectangle rec = {0};
     rec.x = flock->env_bounds_min.x;
     rec.y = flock->env_bounds_min.y;
@@ -98,6 +114,11 @@ void draw_flock(const Flock *flock) {
     rec.height = flock->env_bounds_max.y - rec.y;
 
     DrawRectangleLinesEx(rec, 3, flock->color);
+  }
+  if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+    Boid mb = _get_mouse_boid();
+    _debug_draw_boid(&mb, flock->protected_radius, flock->visual_radius,
+                     flock->debug_draw);
   }
 }
 
@@ -133,6 +154,22 @@ void update_flock(Flock *flock) {
         n_neighbors += 1;
       }
     }
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+      Boid mouse = _get_mouse_boid();
+      if (Vector2Distance(me->position, mouse.position) <
+          flock->protected_radius) {
+        close =
+            Vector2Add(close, Vector2Subtract(me->position, mouse.position));
+      }
+
+      if (Vector2Distance(me->position, mouse.position) <
+          flock->visual_radius) {
+        avg_velocity = Vector2Add(avg_velocity, mouse.velocity);
+        avg_position = Vector2Add(avg_position, mouse.position);
+        n_neighbors += 1;
+      }
+    }
+
     // separation
     me->velocity =
         Vector2Add(me->velocity, Vector2Scale(close, flock->avoid_factor));
