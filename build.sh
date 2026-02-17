@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+CC="gcc"
 BUILD_PATH="build"
 SRC="../src"
 EXE_NAME="boids"
@@ -72,7 +73,7 @@ COMP_FLAGS=(
 )
 
 # Build commands
-EXE_CMD=("gcc" "${@}" "${DEFINES[@]}" "${DEBUG[@]}" "${COMP_FLAGS[@]}" \
+EXE_CMD=("$CC" "${DEFINES[@]}" "${DEBUG[@]}" "${COMP_FLAGS[@]}" \
          "-o" "$EXE_NAME" "$SRC/main.c" "${LIBS[@]}")
 
 EXE_CMD_STR=$(IFS=' '; echo "${EXE_CMD[*]}")
@@ -83,10 +84,23 @@ if [[ ! -d "$BUILD_PATH" ]]; then
     mkdir -p "$BUILD_PATH"
 fi
 
-echo "=== Building dependencies ==="
-if ! build_external; then
-    echo "building dependencies failed"
-    exit 1
+no_build_deps=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -n|--no-build-deps)
+            no_build_deps=true
+            shift;;
+        *)
+            shift;;
+    esac
+done
+
+if [[ $no_build_deps == "false" ]]; then
+    echo "=== Building dependencies ==="
+    if ! build_external; then
+        echo "building dependencies failed"
+        exit 1
+    fi
 fi
 
 cd "$BUILD_PATH" || exit
