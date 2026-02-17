@@ -39,6 +39,7 @@ typedef struct {
   Vector2 env_bounds_min; // usually 0, 0
   Vector2 env_bounds_max; // usually window_width, window_height
   DebugFlags debug_draw;
+  bool is_influenced_by_mouse;
 } Flock;
 
 Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,

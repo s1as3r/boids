@@ -55,6 +55,7 @@ Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,
     .max_speed = 300.0f,
     .env_bounds_min = env_bounds_min,
     .env_bounds_max = env_bounds_max,
+    .is_influenced_by_mouse = true,
     .debug_draw = {
       .enabled = true,
       .protected = false,
@@ -115,7 +116,7 @@ void draw_flock(const Flock *flock) {
 
     DrawRectangleLinesEx(rec, 3, flock->color);
   }
-  if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+  if (flock->is_influenced_by_mouse && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
     Boid mb = _get_mouse_boid();
     _debug_draw_boid(&mb, flock->protected_radius, flock->visual_radius,
                      flock->debug_draw);
@@ -154,7 +155,7 @@ void update_flock(Flock *flock) {
         n_neighbors += 1;
       }
     }
-    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+    if (flock->is_influenced_by_mouse && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
       Boid mouse = _get_mouse_boid();
       if (Vector2Distance(me->position, mouse.position) <
           flock->protected_radius) {

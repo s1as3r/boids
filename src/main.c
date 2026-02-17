@@ -151,6 +151,7 @@ void draw_ui_single_flock(Flock *flock) {
                 ImGuiSliderFlags_None);
   igSliderFloat("Max Speed", &flock->max_speed, 100.0f, 500.0f, "%.2f",
                 ImGuiSliderFlags_None);
+  igCheckbox("Mouse Influence", &flock->is_influenced_by_mouse);
   igSeparator();
 }
 
