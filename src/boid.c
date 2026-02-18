@@ -155,14 +155,12 @@ void update_flock(Flock *flock) {
 
     if (flock->is_influenced_by_mouse && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
       Boid mouse = _get_mouse_boid();
-      if (Vector2Distance(me->position, mouse.position) <
-          flock->protected_radius) {
-        close =
-            Vector2Add(close, Vector2Subtract(me->position, mouse.position));
-      }
-
-      if (Vector2Distance(me->position, mouse.position) <
-          flock->visual_radius) {
+      dist = Vector2Distance(me->position, mouse.position);
+      if (dist < flock->visual_radius) {
+        if (dist < flock->protected_radius) {
+          close =
+              Vector2Add(close, Vector2Subtract(me->position, mouse.position));
+        }
         avg_velocity = Vector2Add(avg_velocity, mouse.velocity);
         avg_position = Vector2Add(avg_position, mouse.position);
         n_neighbors += 1;
