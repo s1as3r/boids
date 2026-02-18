@@ -125,11 +125,10 @@ void draw_flock(const Flock *flock) {
 
 void update_flock(Flock *flock) {
   f32 delta_time = GetFrameTime();
-  f32 speed;
+  f32 speed, dist;
   Boid *me, *other;
   Vector2 close, avg_velocity, avg_position;
   u32 n_neighbors = 0;
-
   for (u32 i = 0; i < flock->n; i++) {
     me = &flock->boids[i];
     n_neighbors = 0;
@@ -142,19 +141,18 @@ void update_flock(Flock *flock) {
       }
 
       other = &flock->boids[j];
-      if (Vector2Distance(me->position, other->position) <
-          flock->protected_radius) {
-        close =
-            Vector2Add(close, Vector2Subtract(me->position, other->position));
-      }
-
-      if (Vector2Distance(me->position, other->position) <
-          flock->visual_radius) {
+      dist = Vector2Distance(me->position, other->position);
+      if (dist < flock->visual_radius) {
+        if (dist < flock->protected_radius) {
+          close =
+              Vector2Add(close, Vector2Subtract(me->position, other->position));
+        }
         avg_velocity = Vector2Add(avg_velocity, other->velocity);
         avg_position = Vector2Add(avg_position, other->position);
         n_neighbors += 1;
       }
     }
+
     if (flock->is_influenced_by_mouse && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
       Boid mouse = _get_mouse_boid();
       if (Vector2Distance(me->position, mouse.position) <
