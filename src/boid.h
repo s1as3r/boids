@@ -8,6 +8,8 @@
 #include <raymath.h>
 // clang-format on
 
+#define ZERO_VECTOR2 ((Vector2){0.0, 0.0})
+
 typedef struct {
   Vector2 position;
   Vector2 velocity;
