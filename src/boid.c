@@ -31,7 +31,8 @@ void draw_boid(const Boid *boid, const Color *color) {
 
 Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,
                  Vector2 env_bounds_max) {
-  Boid *boids = MemAlloc(sizeof(Boid) * n);
+  u32 cap = 2 * n;
+  Boid *boids = MemAlloc(sizeof(Boid) * cap);
   for (u32 i = 0; i < n; i++) {
     boids[i].velocity = (Vector2){100.0f * 2.0f * (pcg32_randomf() - 0.5f),
                                   100.0f * 2.0f * (pcg32_randomf() - 0.5f)};
@@ -44,6 +45,7 @@ Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,
     .id = id,
     .boids = boids,
     .n = n,
+    .cap = cap,
     .color = color,
     .protected_radius = 30.0f,
     .avoid_factor = 0.5f,
@@ -82,7 +84,6 @@ void _debug_draw_boid(const Boid *boid, f32 protected_radius, f32 visual_radius,
              (i32)(boid->position.x + 20.0f), (i32)(boid->position.y), 10,
              GREEN);
   }
-
   if (debug_draw.protected) {
     DrawCircleLinesV(boid->position, protected_radius, RED);
   }
@@ -212,4 +213,34 @@ void flock_update(Flock *flock) {
       me->velocity.y += -flock->turn_factor;
     }
   }
+}
+
+// returns `true` if flock had to be resized
+bool flock_add_boid(Flock *flock, Boid boid) {
+  if (flock->n + 1 > flock->cap) {
+    flock->cap = (u32)(1.5 * flock->cap);
+    flock->boids = MemRealloc(flock->boids, sizeof(Boid) * flock->cap);
+    return true;
+  }
+  flock->boids[flock->n++] = boid;
+  return false;
+}
+
+// returns `true` if flock had to be resized
+bool flock_add_rand_boid(Flock *flock) {
+  return flock_add_boid(
+      flock,
+      (Boid){.velocity = {.x = 100.0f * 2.0f * (pcg32_randomf() - 0.5f),
+                          .y = 100.0f * 2.0f * (pcg32_randomf() - 0.5f)},
+             .position = {.x = pcg32_randomf() * flock->env_bounds_max.x,
+                          .y = pcg32_randomf() * flock->env_bounds_max.y}});
+}
+
+// returns `true` if flock->n > 0
+bool flock_remove_last_boid(Flock *flock) {
+  if (flock->n == 0) {
+    return false;
+  }
+  flock->n--;
+  return true;
 }

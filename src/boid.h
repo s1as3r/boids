@@ -34,7 +34,8 @@ typedef struct {
   f32 min_speed;
   f32 max_speed;
   Color color;
-  u32 n;
+  u32 n; // active boids
+  u32 cap;
   u64 id;
 
   // stuff i dont want a config struct for
@@ -49,5 +50,8 @@ Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,
 void flock_deinit(Flock flock);
 void flock_draw(const Flock *flock);
 void flock_update(Flock *flock);
+bool flock_add_boid(Flock *flock, Boid boid);
+bool flock_add_rand_boid(Flock *flock);
+bool flock_remove_last_boid(Flock *flock);
 
 #endif // _H_BOIDS_BOID

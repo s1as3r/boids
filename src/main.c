@@ -28,7 +28,7 @@ i32 main(void) {
   const i32 screen_w = 1600, screen_h = 1000;
   SetConfigFlags(FLAG_MSAA_4X_HINT);
   InitWindow(screen_w, screen_h, "boids");
-  SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
+  // SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
 
   rlImGuiSetup(true);
   ImGuiStyle *style = igGetStyle();
@@ -132,9 +132,22 @@ void draw_ui_single_flock(Flock *flock) {
     igSeparator();
     igTreePop();
   }
+
   ImVec4_c color = _rlcolor_to_im(&flock->color);
   igColorEdit3("Color", (float *)&color, ImGuiColorEditFlags_None);
   flock->color = _imcolor_to_rl(&color);
+
+  igButton("+", (ImVec2_c){60.0f, 30.0f});
+  if (igIsItemActive()) {
+    flock_add_rand_boid(flock);
+  }
+  igSameLine(60.0f, 10.0f);
+  igButton("-", (ImVec2_c){60.0f, 30.0f});
+  if (igIsItemActive()) {
+    flock_remove_last_boid(flock);
+  }
+  igSameLine(130.0f, 10.0f);
+  igText("%u", flock->n);
 
   igSliderFloat("Protected Radius", &flock->protected_radius, 0.0f,
                 flock->visual_radius, "%.2f", ImGuiSliderFlags_None);
