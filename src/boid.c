@@ -29,7 +29,7 @@ void draw_boid(const Boid *boid, const Color *color) {
   DrawTriangleFan(points, 4, *color);
 }
 
-Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,
+Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,
                  Vector2 env_bounds_max) {
   Boid *boids = MemAlloc(sizeof(Boid) * n);
   for (u32 i = 0; i < n; i++) {
@@ -69,7 +69,7 @@ Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,
   return flock;
 }
 
-void deinit_flock(Flock flock) { MemFree(flock.boids); }
+void flock_deinit(Flock flock) { MemFree(flock.boids); }
 
 void _debug_draw_boid(const Boid *boid, f32 protected_radius, f32 visual_radius,
                       DebugFlags debug_draw) {
@@ -98,7 +98,7 @@ Boid _get_mouse_boid(void) {
                     Vector2Scale(GetMouseDelta(), MOUSE_DELTA_TO_VELOCITY)};
 }
 
-void draw_flock(const Flock *flock) {
+void flock_draw(const Flock *flock) {
   Boid *boid;
   for (u32 i = 0; i < flock->n; i++) {
     boid = &flock->boids[i];
@@ -123,7 +123,7 @@ void draw_flock(const Flock *flock) {
   }
 }
 
-void update_flock(Flock *flock) {
+void flock_update(Flock *flock) {
   f32 delta_time = GetFrameTime();
   f32 speed, dist;
   Boid *me, *other;

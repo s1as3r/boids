@@ -38,29 +38,30 @@ i32 main(void) {
   style->ItemInnerSpacing = style->ItemSpacing = (ImVec2_c){3.0f, 5.0f};
   style->Colors[ImGuiCol_WindowBg] = (ImVec4_c){0.30f, 0.30f, 0.30f, 0.70f};
 
-  igGetIO_Nil()->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  ImGuiIO *io = igGetIO_Nil();
+  io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
   const f32 margin = 75.0f;
   Vector2 env_bounds_min = {margin, margin};
   Vector2 env_bounds_max = {screen_w - margin, screen_h - margin};
 
   Flock flocks[3] = {
-      init_flock(0, 100, WHITE, env_bounds_min, env_bounds_max),
-      init_flock(1, 100, BLUE, env_bounds_min, env_bounds_max),
-      init_flock(2, 100, GREEN, env_bounds_min, env_bounds_max),
+      flock_init(0, 100, WHITE, env_bounds_min, env_bounds_max),
+      flock_init(1, 100, BLUE, env_bounds_min, env_bounds_max),
+      flock_init(2, 100, GREEN, env_bounds_min, env_bounds_max),
   };
   u64 n_flocks = array_count(flocks);
 
   RenderTexture2D target = LoadRenderTexture(screen_w, screen_h);
   while (!WindowShouldClose()) {
     for (u32 i = 0; i < n_flocks; i++) {
-      update_flock(&flocks[i]);
+      flock_update(&flocks[i]);
     }
     BeginTextureMode(target);
     {
       ClearBackground(BLACK);
       for (u32 i = 0; i < n_flocks; i++) {
-        draw_flock(&flocks[i]);
+        flock_draw(&flocks[i]);
       }
     }
     EndTextureMode();
@@ -89,7 +90,7 @@ i32 main(void) {
   }
 
   for (u64 i = 0; i < n_flocks; i++) {
-    deinit_flock(flocks[i]);
+    flock_deinit(flocks[i]);
   }
   rlImGuiShutdown();
   UnloadRenderTexture(target);

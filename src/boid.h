@@ -44,10 +44,10 @@ typedef struct {
   bool is_influenced_by_mouse;
 } Flock;
 
-Flock init_flock(u64 id, u32 n, Color color, Vector2 env_bounds_min,
+Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,
                  Vector2 env_bounds_max);
-void deinit_flock(Flock flock);
-void draw_flock(const Flock *flock);
-void update_flock(Flock *flock);
+void flock_deinit(Flock flock);
+void flock_draw(const Flock *flock);
+void flock_update(Flock *flock);
 
 #endif // _H_BOIDS_BOID
