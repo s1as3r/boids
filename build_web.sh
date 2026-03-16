@@ -110,10 +110,23 @@ if [[ ! -d "$BUILD_PATH" ]]; then
     mkdir -p "$BUILD_PATH"
 fi
 
-echo "=== Building dependencies ==="
-if ! build_external_web; then
-    echo "building web dependencies failed"
-    exit 1
+no_build_deps=false
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -n|--no-build-deps)
+            no_build_deps=true
+            shift;;
+        *)
+            shift;;
+    esac
+done
+
+if [[ $no_build_deps == "false" ]]; then
+    echo "=== Building dependencies ==="
+    if ! build_external_web; then
+        echo "building web dependencies failed"
+        exit 1
+    fi
 fi
 
 cd "$BUILD_PATH" || exit 1
