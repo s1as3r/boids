@@ -8,6 +8,7 @@
 // clang-format on
 
 #define MOUSE_DELTA_TO_VELOCITY 350.0f
+#define FLOCK_CAP_GROWTH_FACTOR 1.5
 
 void draw_boid(const Boid *boid, const Color *color) {
   const f32 half_width = 7.0f;
@@ -218,7 +219,7 @@ void flock_update(Flock *flock) {
 // returns `true` if flock had to be resized
 bool flock_add_boid(Flock *flock, Boid boid) {
   if (flock->n + 1 > flock->cap) {
-    flock->cap = (u32)(1.5 * flock->cap);
+    flock->cap = (u32)(FLOCK_CAP_GROWTH_FACTOR * flock->cap);
     flock->boids = MemRealloc(flock->boids, sizeof(Boid) * flock->cap);
     return true;
   }
