@@ -1,6 +1,7 @@
 CompileFlags:
   Add: [
     "-xc",
+    "-I../external/raylib/src",
     "-I../external/rlImGui",
     "-I../external/cimgui",
     "-Wall",

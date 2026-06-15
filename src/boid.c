@@ -218,13 +218,14 @@ void flock_update(Flock *flock) {
 
 // returns `true` if flock had to be resized
 bool flock_add_boid(Flock *flock, Boid boid) {
+  bool did_resize = false;
   if (flock->n + 1 > flock->cap) {
     flock->cap = (u32)(FLOCK_CAP_GROWTH_FACTOR * flock->cap);
     flock->boids = MemRealloc(flock->boids, sizeof(Boid) * flock->cap);
-    return true;
+    did_resize = true;
   }
   flock->boids[flock->n++] = boid;
-  return false;
+  return did_resize;
 }
 
 // returns `true` if flock had to be resized
