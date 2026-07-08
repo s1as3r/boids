@@ -6,6 +6,9 @@
 #include <stdint.h>
 // clang-format on
 
+#define SCREEN_W 1600
+#define SCREEN_H 900
+
 #define global static
 #define internal static
 #define local_persist static

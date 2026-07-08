@@ -16,15 +16,25 @@ typedef struct {
 } Boid;
 
 typedef struct {
+  Boid **boids;
+  u32 cap;
+  u32 len;
+} BoidList;
+
+typedef struct {
   bool enabled;
   bool protected;
   bool visual;
   bool velocity;
   bool env_edge;
+  bool partitions;
 } DebugFlags;
 
 typedef struct {
   Boid *boids;
+  BoidList *partitions;
+  u32 partition_y;
+  u32 partition_x;
   f32 protected_radius;
   f32 avoid_factor;
   f32 visual_radius;
@@ -43,6 +53,7 @@ typedef struct {
   Vector2 env_bounds_max; // usually window_width, window_height
   DebugFlags debug_draw;
   bool is_influenced_by_mouse;
+  bool init_partitions;
 } Flock;
 
 Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,

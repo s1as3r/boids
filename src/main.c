@@ -25,7 +25,7 @@ void draw_ui_single_flock(Flock *flock);
 void draw_ui(Flock *flocks, u64 n);
 
 i32 main(void) {
-  const i32 screen_w = 1600, screen_h = 900;
+  const i32 screen_w = SCREEN_W, screen_h = SCREEN_H;
   SetConfigFlags(FLAG_MSAA_4X_HINT);
   InitWindow(screen_w, screen_h, "boids");
   // SetTargetFPS(GetMonitorRefreshRate(GetCurrentMonitor()));
@@ -45,10 +45,10 @@ i32 main(void) {
   Vector2 env_bounds_min = {margin, margin};
   Vector2 env_bounds_max = {screen_w - margin, screen_h - margin};
 
-  Flock flocks[3] = {
-      flock_init(0, 100, WHITE, env_bounds_min, env_bounds_max),
-      flock_init(1, 100, BLUE, env_bounds_min, env_bounds_max),
-      flock_init(2, 100, GREEN, env_bounds_min, env_bounds_max),
+  Flock flocks[1] = {
+      flock_init(0, 2500, WHITE, env_bounds_min, env_bounds_max),
+      // flock_init(1, 100, BLUE, env_bounds_min, env_bounds_max),
+      // flock_init(2, 100, GREEN, env_bounds_min, env_bounds_max),
   };
   u64 n_flocks = array_count(flocks);
 
@@ -126,6 +126,7 @@ void draw_ui_single_flock(Flock *flock) {
     igCheckbox("Visual Radius##dbg", &flock->debug_draw.visual);
     igCheckbox("Env Edges##dbg", &flock->debug_draw.env_edge);
     igCheckbox("Velocity##dbg", &flock->debug_draw.velocity);
+    igCheckbox("Partitions##dbg", &flock->debug_draw.partitions);
     if (!flock->debug_draw.enabled) {
       igEndDisabled();
     }
@@ -151,8 +152,9 @@ void draw_ui_single_flock(Flock *flock) {
 
   igSliderFloat("Protected Radius", &flock->protected_radius, 0.0f,
                 flock->visual_radius, "%.2f", ImGuiSliderFlags_None);
-  igSliderFloat("Visual Radius", &flock->visual_radius, 0.0f, 400.0f, "%.2f",
-                ImGuiSliderFlags_None);
+  flock->init_partitions =
+      igSliderFloat("Visual Radius", &flock->visual_radius, 10.0f, 400.0f,
+                    "%.2f", ImGuiSliderFlags_None);
   igSliderFloat("Avoid Factor", &flock->avoid_factor, 0.0f, 2.0f, "%.2f",
                 ImGuiSliderFlags_None);
   igSliderFloat("Matching Factor", &flock->matching_factor, 0.0f,
