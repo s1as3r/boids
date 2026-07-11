@@ -50,12 +50,14 @@ i32 main(void) {
       // flock_init(1, 100, BLUE, env_bounds_min, env_bounds_max),
       // flock_init(2, 100, GREEN, env_bounds_min, env_bounds_max),
   };
+  ThreadWorkerData workers = worker_data_init();
   u64 n_flocks = array_count(flocks);
 
   RenderTexture2D target = LoadRenderTexture(screen_w, screen_h);
+
   while (!WindowShouldClose()) {
     for (u32 i = 0; i < n_flocks; i++) {
-      flock_update(&flocks[i]);
+      flock_update(&flocks[i], &workers);
     }
     BeginTextureMode(target);
     {
@@ -92,6 +94,7 @@ i32 main(void) {
   for (u64 i = 0; i < n_flocks; i++) {
     flock_deinit(flocks[i]);
   }
+  worker_data_deinit(workers);
   rlImGuiShutdown();
   UnloadRenderTexture(target);
   CloseWindow();

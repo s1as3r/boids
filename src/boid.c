@@ -5,6 +5,9 @@
 
 #include <raylib.h>
 #include <raymath.h>
+#include <threads.h>
+#include <sys/sysinfo.h>
+#include <string.h>
 // clang-format on
 
 #define MOUSE_DELTA_TO_VELOCITY 350.0f
@@ -72,7 +75,7 @@ Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,
     .matching_factor = 0.5f,
     .centering_factor = 0.05f,
     .turn_factor = 20.0f,
-    .min_speed = 50.0f,
+    .min_speed = 150.0f,
     .max_speed = 300.0f,
     .env_bounds_min = env_bounds_min,
     .env_bounds_max = env_bounds_max,
@@ -87,12 +90,14 @@ Flock flock_init(u64 id, u32 n, Color color, Vector2 env_bounds_min,
   };
   // clang-format on
   _flock_init_partitions(&flock);
+  flock.new_velocities = MemAlloc(sizeof(Vector2) * cap);
 
   return flock;
 }
 
 void flock_deinit(Flock flock) {
   MemFree(flock.boids);
+  MemFree(flock.new_velocities);
   u32 n_partitions = flock.partition_x * flock.partition_y;
   for (u32 i = 0; i < n_partitions; i++) {
     MemFree(flock.partitions[i].boids);
@@ -181,77 +186,52 @@ bool boid_list_add(BoidList *list, Boid *boid) {
   return did_resize;
 }
 
-void flock_update(Flock *flock) {
-  f32 delta_time = GetFrameTime();
-  // build flock-lists
-  if (flock->init_partitions) {
-    u32 n_partitions = flock->partition_x * flock->partition_y;
-    for (u32 i = 0; i < n_partitions; i++) {
-      MemFree(flock->partitions[i].boids);
-    }
-    MemFree(flock->partitions);
-    _flock_init_partitions(flock);
-  }
+i32 _flock_update_phase1(void *arg) {
+  FlockUpdateArgs *a = (FlockUpdateArgs *)arg;
+  Flock *flock = a->flock;
 
-  u32 n_partitions = flock->partition_x * flock->partition_y;
-  for (u32 i = 0; i < n_partitions; i++) {
-    flock->partitions[i].len = 0;
-  }
-
-  for (u32 i = 0; i < flock->n; i++) {
-    Boid *b = &flock->boids[i];
-    u32 x = (u32)Clamp((b->position.x / (2.0f * flock->visual_radius)), 0.0f,
-                       (f32)flock->partition_x - 1.0f);
-    u32 y = (u32)Clamp((b->position.y / (2.0f * flock->visual_radius)), 0.0f,
-                       (f32)flock->partition_y - 1.0f);
-    boid_list_add(&flock->partitions[(y * flock->partition_x) + x], b);
-  }
-
-  f32 speed, dist;
-  Boid *me, *other;
-  Vector2 close, avg_velocity, avg_position;
-  u32 n_neighbors = 0;
-
-  for (u32 part = 0; part < n_partitions; part++) {
+  for (u32 part = a->start_part; part < a->end_part; part++) {
     u32 px = part % flock->partition_x;
     u32 py = part / flock->partition_x;
     BoidList *self_lst = &flock->partitions[part];
 
+    i32 nx_start = (i32)px - 1;
+    i32 nx_end = (i32)px + 1;
+    i32 ny_start = (i32)py - 1;
+    i32 ny_end = (i32)py + 1;
+
+    if (nx_start < 0) {
+      nx_start = 0;
+    };
+    if (ny_start < 0) {
+      ny_start = 0;
+    };
+    if (nx_end > (i32)flock->partition_x - 1) {
+      nx_end = (i32)flock->partition_x - 1;
+    }
+    if (ny_end > (i32)flock->partition_y - 1) {
+      ny_end = (i32)flock->partition_y - 1;
+    }
+
     for (u32 i = 0; i < self_lst->len; i++) {
-      me = self_lst->boids[i];
-      n_neighbors = 0;
-      close = ZERO_VECTOR2;
-      avg_velocity = ZERO_VECTOR2;
-      avg_position = ZERO_VECTOR2;
+      Boid *me = self_lst->boids[i];
+      u32 idx = (u32)(me - flock->boids);
 
-      // clamp 3x3 neighborhood around this cell
-      i32 nx_start = (i32)px - 1;
-      i32 nx_end = (i32)px + 1;
-      i32 ny_start = (i32)py - 1;
-      i32 ny_end = (i32)py + 1;
-      if (nx_start < 0) {
-        nx_start = 0;
-      }
-      if (ny_start < 0) {
-        ny_start = 0;
-      }
-      if (nx_end > (i32)flock->partition_x - 1) {
-        nx_end = (i32)flock->partition_x - 1;
-      }
-      if (ny_end > (i32)flock->partition_y - 1) {
-        ny_end = (i32)flock->partition_y - 1;
-      }
+      Vector2 close = ZERO_VECTOR2;
+      Vector2 avg_velocity = ZERO_VECTOR2;
+      Vector2 avg_position = ZERO_VECTOR2;
 
+      u32 n_neighbors = 0;
       for (i32 ny = ny_start; ny <= ny_end; ny++) {
         for (i32 nx = nx_start; nx <= nx_end; nx++) {
-          BoidList *neighbor_lst =
+          BoidList *neighbors =
               &flock->partitions[(u32)ny * flock->partition_x + (u32)nx];
-          for (u32 j = 0; j < neighbor_lst->len; j++) {
-            other = neighbor_lst->boids[j];
+          for (u32 j = 0; j < neighbors->len; j++) {
+            Boid *other = neighbors->boids[j];
             if (other == me) {
               continue;
             }
-            dist = Vector2Distance(me->position, other->position);
+            f32 dist = Vector2Distance(me->position, other->position);
             if (dist < flock->visual_radius) {
               if (dist < flock->protected_radius) {
                 close = Vector2Add(
@@ -259,46 +239,57 @@ void flock_update(Flock *flock) {
               }
               avg_velocity = Vector2Add(avg_velocity, other->velocity);
               avg_position = Vector2Add(avg_position, other->position);
-              n_neighbors += 1;
+              n_neighbors++;
             }
           }
         }
       }
 
-      if (flock->is_influenced_by_mouse &&
-          IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
-        Boid mouse = _get_mouse_boid();
-        dist = Vector2Distance(me->position, mouse.position);
+      if (a->mouse_active) {
+        f32 dist = Vector2Distance(me->position, a->mouse_boid.position);
         if (dist < flock->visual_radius) {
           if (dist < flock->protected_radius) {
-            close = Vector2Add(close,
-                               Vector2Subtract(me->position, mouse.position));
+            close = Vector2Add(
+                close, Vector2Subtract(me->position, a->mouse_boid.position));
           }
-          avg_velocity = Vector2Add(avg_velocity, mouse.velocity);
-          avg_position = Vector2Add(avg_position, mouse.position);
-          n_neighbors += 1;
+          avg_velocity = Vector2Add(avg_velocity, a->mouse_boid.velocity);
+          avg_position = Vector2Add(avg_position, a->mouse_boid.position);
+          n_neighbors++;
         }
       }
 
-      // separation
-      me->velocity =
+      // start from current velocity, but never write it back until phase 2
+      Vector2 new_vel =
           Vector2Add(me->velocity, Vector2Scale(close, flock->avoid_factor));
       if (n_neighbors > 0) {
-        // alignment
         avg_velocity = Vector2Scale(avg_velocity, 1.0f / (f32)n_neighbors);
-        me->velocity =
-            Vector2Add(me->velocity,
-                       Vector2Scale(Vector2Subtract(avg_velocity, me->velocity),
-                                    flock->matching_factor));
-        // cohesion
+        new_vel = Vector2Add(
+            new_vel, Vector2Scale(Vector2Subtract(avg_velocity, new_vel),
+                                  flock->matching_factor));
         avg_position = Vector2Scale(avg_position, 1.0f / (f32)n_neighbors);
-        me->velocity =
-            Vector2Add(me->velocity,
-                       Vector2Scale(Vector2Subtract(avg_position, me->position),
-                                    flock->centering_factor));
+        new_vel = Vector2Add(
+            new_vel, Vector2Scale(Vector2Subtract(avg_position, me->position),
+                                  flock->centering_factor));
       }
 
-      speed = Vector2Length(me->velocity);
+      flock->new_velocities[idx] = new_vel;
+    }
+  }
+  return 0;
+}
+
+i32 _flock_update_phase2(void *arg) {
+  FlockUpdateArgs *a = (FlockUpdateArgs *)arg;
+  Flock *flock = a->flock;
+
+  for (u32 part = a->start_part; part < a->end_part; part++) {
+    BoidList *lst = &flock->partitions[part];
+    for (u32 i = 0; i < lst->len; i++) {
+      Boid *me = lst->boids[i];
+      u32 idx = (u32)(me - flock->boids);
+      me->velocity = flock->new_velocities[idx];
+
+      f32 speed = Vector2Length(me->velocity);
       if (speed > flock->max_speed) {
         me->velocity = Vector2Scale(me->velocity, flock->max_speed / speed);
       }
@@ -306,7 +297,7 @@ void flock_update(Flock *flock) {
         me->velocity = Vector2Scale(me->velocity, flock->min_speed / speed);
       }
       me->position =
-          Vector2Add(me->position, Vector2Scale(me->velocity, delta_time));
+          Vector2Add(me->position, Vector2Scale(me->velocity, a->delta_time));
       if (me->position.x < flock->env_bounds_min.x) {
         me->velocity.x += flock->turn_factor;
       }
@@ -321,6 +312,105 @@ void flock_update(Flock *flock) {
       }
     }
   }
+  return 0;
+}
+
+void _run_phase(Flock *flock, ThreadWorkerData *worker_data, thrd_start_t fn,
+                f32 delta_time, bool mouse_active, Boid mouse_boid) {
+  u32 n_partitions = flock->partition_x * flock->partition_y;
+  u32 chunk =
+      (n_partitions + worker_data->n_workers - 1) / worker_data->n_workers;
+
+  memset(worker_data->valid_threads, 0, sizeof(bool) * worker_data->n_workers);
+  for (u32 w = 0; w < worker_data->n_workers; w++) {
+    u32 start = w * chunk;
+    if (start >= n_partitions) {
+      break;
+    }
+    u32 end = start + chunk;
+    if (end > n_partitions) {
+      end = n_partitions;
+    }
+
+    worker_data->args[w] = (FlockUpdateArgs){
+        .flock = flock,
+        .start_part = start,
+        .end_part = end,
+        .delta_time = delta_time,
+        .mouse_active = mouse_active,
+        .mouse_boid = mouse_boid,
+    };
+    if (thrd_create(&worker_data->threads[w], fn, &worker_data->args[w]) !=
+        thrd_success) {
+      fn(&worker_data->args[w]);
+      worker_data->valid_threads[w] = false;
+    } else {
+      worker_data->valid_threads[w] = true;
+    }
+  }
+
+  for (u32 w = 0; w < worker_data->n_workers; w++) {
+    if (worker_data->valid_threads[w]) {
+      thrd_join(worker_data->threads[w], NULL);
+    }
+  }
+}
+
+ThreadWorkerData worker_data_init(void) {
+  i32 nprocs = get_nprocs();
+  u32 n_workers = nprocs > 1 ? (u32)nprocs : 1;
+
+  return (ThreadWorkerData){
+      .n_procs = n_workers,
+      .n_workers = n_workers,
+      .threads = MemAlloc(sizeof(thrd_t) * n_workers),
+      .valid_threads = MemAlloc(sizeof(bool) * n_workers),
+      .args = MemAlloc(sizeof(FlockUpdateArgs) * n_workers),
+  };
+}
+
+void worker_data_deinit(ThreadWorkerData worker_data) {
+  MemFree(worker_data.args);
+  MemFree(worker_data.threads);
+}
+
+void flock_update(Flock *flock, ThreadWorkerData *worker_data) {
+  f32 delta_time = GetFrameTime();
+
+  if (flock->init_partitions) {
+    u32 n_partitions = flock->partition_x * flock->partition_y;
+    for (u32 i = 0; i < n_partitions; i++) {
+      MemFree(flock->partitions[i].boids);
+    }
+    MemFree(flock->partitions);
+    _flock_init_partitions(flock);
+    worker_data->n_workers = worker_data->n_procs;
+  }
+
+  u32 n_partitions = flock->partition_x * flock->partition_y;
+  if (worker_data->n_workers > n_partitions) {
+    worker_data->n_workers = n_partitions;
+  }
+  for (u32 i = 0; i < n_partitions; i++) {
+    flock->partitions[i].len = 0;
+  }
+  for (u32 i = 0; i < flock->n; i++) {
+    Boid *b = &flock->boids[i];
+    u32 x = (u32)Clamp(b->position.x / (2.0f * flock->visual_radius), 0.0f,
+                       (f32)flock->partition_x - 1.0f);
+    u32 y = (u32)Clamp(b->position.y / (2.0f * flock->visual_radius), 0.0f,
+                       (f32)flock->partition_y - 1.0f);
+    boid_list_add(&flock->partitions[(y * flock->partition_x) + x], b);
+  }
+
+  bool mouse_active =
+      flock->is_influenced_by_mouse && IsMouseButtonDown(MOUSE_LEFT_BUTTON);
+  Boid mouse_boid = mouse_active ? _get_mouse_boid() : (Boid){0};
+
+  _run_phase(flock, worker_data, _flock_update_phase1, delta_time, mouse_active,
+             mouse_boid);
+  _run_phase(flock, worker_data, _flock_update_phase2, delta_time, mouse_active,
+             mouse_boid);
 }
 
 // returns `true` if flock had to be resized
@@ -329,6 +419,8 @@ bool flock_add_boid(Flock *flock, Boid boid) {
   if (flock->n + 1 > flock->cap) {
     flock->cap = (u32)(FLOCK_CAP_GROWTH_FACTOR * (f32)flock->cap);
     flock->boids = MemRealloc(flock->boids, sizeof(Boid) * flock->cap);
+    flock->new_velocities =
+        MemRealloc(flock->new_velocities, sizeof(Vector2) * flock->cap);
     did_resize = true;
   }
   flock->boids[flock->n++] = boid;
