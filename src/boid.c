@@ -372,6 +372,7 @@ ThreadWorkerData worker_data_init(void) {
 void worker_data_deinit(ThreadWorkerData worker_data) {
   MemFree(worker_data.args);
   MemFree(worker_data.threads);
+  MemFree(worker_data.valid_threads);
 }
 
 void flock_update(Flock *flock, ThreadWorkerData *worker_data) {
